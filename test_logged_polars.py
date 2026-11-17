@@ -83,6 +83,24 @@ class LoggingTests(unittest.TestCase):
         self.assertEqual(self.content().count('NOTE ['), 2)
         self.assertEqual(result.native.height, 6)
 
+    def test_repeated_method_with_ambiguous_ast_rank(self):
+        # Simulate Python versions where two calls map to the same AST rank.
+        # Bytecode offsets, not AST ranks, should establish continuation.
+        original_site = module._site
+
+        def ambiguous_site(frame, method_name):
+            from dataclasses import replace
+            return replace(original_site(frame, method_name), rank=0)
+
+        module._site = ambiguous_site
+        try:
+            result = self.df.filter(True).filter(True)
+        finally:
+            module._site = original_site
+        self.assertEqual(self.content().count('[execution '), 1)
+        self.assertEqual(self.content().count('NOTE ['), 2)
+        self.assertEqual(result.native.height, 6)
+
     def test_loop_repeats_source(self):
         for i in range(3):
             unused = self.df.filter(i)

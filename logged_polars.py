@@ -244,12 +244,14 @@ def _track_call(frame, source: Source) -> _Chain:
     previous = _last_call.get()
     # Different call sites may have the same source line. Offset comparison
     # distinguishes progress through the statement from returning in a loop.
+    # Bytecode positions increase through separate calls in a single
+    # statement, even when AST matching cannot uniquely rank repeated
+    # methods (e.g. chained .filter().filter() on the same line).
+    # When a loop executes the statement again, its position resets.
     continuation = (
         previous is not None
         and previous.frame is frame
         and previous.key == source.key
-        and source.rank >= 0
-        and source.rank > previous.rank
         and frame.f_lasti > previous.offset
     )
     execution = previous.execution if continuation else _new_execution()
